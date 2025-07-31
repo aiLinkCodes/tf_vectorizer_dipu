@@ -1,25 +1,19 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
 import joblib
+import numpy as np
 
-# Cargar el vectorizador previamente entrenado
-vectorizer = joblib.load("assets/tfidf_vectorizer.joblib")  # Ajusta la ruta si es necesario
+app = FastAPI()
 
-app = Flask(__name__)
+# Cargar el vectorizador entrenado
+vectorizer = joblib.load("tfidf_vectorizer.joblib")
 
-@app.route("/vectorize", methods=["POST"])
-def vectorize():
-    data = request.json
-    if not data or "text" not in data:
-        return jsonify({"error": "Missing 'text' in request"}), 400
+class TextInput(BaseModel):
+    text: str
 
-    texto = data["text"]
-    vector = vectorizer.transform([texto])
-    row = vector[0]
-    result = {
-        "indices": row.indices.tolist(),
-        "values": row.data.tolist()
-    }
-    return jsonify(result)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+@app.post("/vectorize")
+def vectorize(input: TextInput):
+    vector = vectorizer.transform([input.text])
+    indices = vector.indices.tolist()
+    values = vector.data.tolist()
+    return {"indices": indices, "values": values}
